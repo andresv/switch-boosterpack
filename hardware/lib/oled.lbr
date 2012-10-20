@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="6.2">
+<eagle version="6.3">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.5" unitdist="mm" unit="mm" style="lines" multiple="1" display="yes" altdistance="0.025" altunitdist="inch" altunit="inch"/>
+<grid distance="0.05" unitdist="inch" unit="mm" style="lines" multiple="1" display="yes" altdistance="0.025" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="yes" active="yes"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -167,10 +167,10 @@
 <smd name="28" x="8.75" y="0" dx="1.6" dy="0.35" layer="16" rot="R90"/>
 <smd name="29" x="9.45" y="0" dx="1.6" dy="0.35" layer="16" rot="R90"/>
 <smd name="30" x="10.15" y="0" dx="1.6" dy="0.35" layer="16" rot="R90"/>
-<text x="-10.65" y="-0.95" size="0.8128" layer="21" font="vector" rot="R270">1</text>
-<text x="-4.15" y="-1.05" size="0.8128" layer="21" font="vector" rot="R270">10</text>
-<text x="2.8" y="-1.05" size="0.8128" layer="21" font="vector" rot="R270">20</text>
-<text x="9.75" y="-1.05" size="0.8128" layer="21" font="vector" rot="R270">30</text>
+<text x="-10.65" y="-0.95" size="0.8128" layer="22" font="vector" rot="R270">1</text>
+<text x="-4.15" y="-1.05" size="0.8128" layer="22" font="vector" rot="R270">10</text>
+<text x="2.8" y="-1.05" size="0.8128" layer="22" font="vector" rot="R270">20</text>
+<text x="9.75" y="-1.05" size="0.8128" layer="22" font="vector" rot="R270">30</text>
 <wire x1="-13.35" y1="10" x2="13.35" y2="10" width="0.127" layer="21"/>
 <wire x1="13.35" y1="10" x2="13.35" y2="-9.3" width="0.127" layer="21"/>
 <wire x1="13.35" y1="-9.3" x2="-13.35" y2="-9.3" width="0.127" layer="21"/>

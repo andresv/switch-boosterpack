@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="6.2">
+<eagle version="6.3">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -9,6 +9,8 @@
 <grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
+<layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
+<layer number="15" name="Route15" color="4" fill="6" visible="no" active="no"/>
 <layer number="16" name="Bottom" color="1" fill="1" visible="no" active="no"/>
 <layer number="17" name="Pads" color="2" fill="1" visible="no" active="no"/>
 <layer number="18" name="Vias" color="2" fill="1" visible="no" active="no"/>
@@ -36599,10 +36601,10 @@ Standard 2-pin 0.1" header. Use with straight break away headers (SKU : PRT-0011
 <smd name="28" x="8.75" y="0" dx="1.6" dy="0.35" layer="16" rot="R90"/>
 <smd name="29" x="9.45" y="0" dx="1.6" dy="0.35" layer="16" rot="R90"/>
 <smd name="30" x="10.15" y="0" dx="1.6" dy="0.35" layer="16" rot="R90"/>
-<text x="-10.65" y="-0.95" size="0.8128" layer="21" font="vector" rot="R270">1</text>
-<text x="-4.15" y="-1.05" size="0.8128" layer="21" font="vector" rot="R270">10</text>
-<text x="2.8" y="-1.05" size="0.8128" layer="21" font="vector" rot="R270">20</text>
-<text x="9.75" y="-1.05" size="0.8128" layer="21" font="vector" rot="R270">30</text>
+<text x="-10.65" y="-0.95" size="0.8128" layer="22" font="vector" rot="R270">1</text>
+<text x="-4.15" y="-1.05" size="0.8128" layer="22" font="vector" rot="R270">10</text>
+<text x="2.8" y="-1.05" size="0.8128" layer="22" font="vector" rot="R270">20</text>
+<text x="9.75" y="-1.05" size="0.8128" layer="22" font="vector" rot="R270">30</text>
 <wire x1="-13.35" y1="10" x2="13.35" y2="10" width="0.127" layer="21"/>
 <wire x1="13.35" y1="10" x2="13.35" y2="-9.3" width="0.127" layer="21"/>
 <wire x1="13.35" y1="-9.3" x2="-13.35" y2="-9.3" width="0.127" layer="21"/>
@@ -36982,7 +36984,7 @@ Siemens, Philips, Valvo&lt;p&gt;
 <plain>
 <text x="292.1" y="12.7" size="3.81" layer="94">Switch Boosterpack</text>
 <text x="290.83" y="5.08" size="1.778" layer="94">www.github.com/andresv/switch-boosterpack</text>
-<text x="375.412" y="5.334" size="1.778" layer="94">v 1.0</text>
+<text x="375.412" y="5.334" size="1.778" layer="94">v 1.1</text>
 <text x="288.29" y="27.94" size="1.778" layer="97">This work is licensed under version 3.0 of the Creative Commons CC-BY-SA license.</text>
 <text x="288.29" y="25.4" size="1.778" layer="97">http://creativecommons.org/licenses/by-sa/3.0/</text>
 <wire x1="5.08" y1="167.64" x2="152.4" y2="167.64" width="0.1524" layer="97" style="longdash"/>
