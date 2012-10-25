@@ -1,33 +1,33 @@
 /*
-Copyright 2012 Andres Vahter
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-"Software"), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+ * Copyright 2012 Andres Vahter
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 
 /*
-This driver is based on www.43oh.com 128x64 OLED Booster Pack driver:
-http://www.43oh.com/2011/11/the-terminal-128x64-oled-booster-pack/
-
-Original driver is heaviliy modified by Andres Vahter in order to work
-with Energia environment and with I2C protocol.
+ * This driver is based on www.43oh.com 128x64 OLED Booster Pack driver:
+ * http://www.43oh.com/2011/11/the-terminal-128x64-oled-booster-pack/
+ *
+ * Original driver is heaviliy modified by Andres Vahter in order to work
+ * with Energia environment and with I2C protocol.
 */
 
 #include <Energia.h>
@@ -119,14 +119,24 @@ void OLED::set_cursor(uint8_t column, uint8_t row, uint8_t size_flag) {
 
 void OLED::write(char *format, ...) {
     char c;
-    int i;
+    int i, val;
+    int8_t padding_len;
     long n;
     
     va_list a;
     va_start(a, format);
     while (c = *format++) {
         if (c == '%') {
-            switch (c = *format++) {
+            c = *format++;
+            // '1' is 49 '2' is 50 .. '9' is 57
+            // '1' - 48 = 0x01 which is real number, not ASCII number
+            padding_len = c-48;
+            // we found padding so now check format string type
+            if ((uint8_t)padding_len >= 1 && (uint8_t)padding_len <= 9) {
+                c = *format++;
+            }
+
+            switch (c) {
                 case 's':                       // String
                     puts(va_arg(a, char*));
                     break;
@@ -137,7 +147,29 @@ void OLED::write(char *format, ...) {
                 case 'd':                       // 16 bit Integer
                 case 'u':                       // 16 bit Unsigned
                     i = va_arg(a, int);
-                    if (c == 'i' && i < 0) i = -i, putc('-');
+                    if ((uint8_t)padding_len >= 1 && (uint8_t)padding_len <= 9) {
+                        val = i;
+                        while (val != 0) {
+                            val = val / 10;
+                            padding_len--;
+                        }
+
+                        if (padding_len > 0) {
+                            if (i <= 0) {
+                                padding_len--; // - sign already pads 1 place and 0 is special
+                            }
+
+                            for (int i = 0; i < (uint8_t)padding_len; ++i) {
+                                putc(' ');
+                            }
+                        }
+                    }
+
+                    if (c == 'i' && i < 0) {
+                        i = -i;
+                        putc('-');
+                    }
+
                     xtoa((unsigned)i, dv + 5);
                     break;
                 case 'l':                       // 32 bit Long
@@ -266,7 +298,7 @@ void OLED::fill_ram_page(uint8_t page, uint8_t data) {
 void OLED::fill_ram_font_small(uint8_t number, uint8_t column, uint8_t row) {
     uint8_t j = 0;
     set_start_page(row);
-    set_start_column(column);   
+    set_start_column(column);
     
     for (j=0; j<SMALL_FONT_WIDTH; j++) {
         send_data(font_table_small[j + (number * SMALL_FONT_WIDTH)]);
