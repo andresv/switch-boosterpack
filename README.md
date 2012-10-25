@@ -1,6 +1,6 @@
-## Switch Launchpad Boosterback
+## Switch Launchpad Boosterpack
 
-This is boosterback for MSP430 Launchpad. It has SSD1306 based 128x64 pixel OLED display and 4 power MOSFET outputs. It is meant for switching various loads - for example pneumatic actuators or relays.
+This is boosterpack for MSP430 Launchpad. It has SSD1306 based 128x64 pixel OLED display and 4 power MOSFET outputs. It is meant for switching various loads - for example pneumatic actuators or relays.
 
 Software is written using Energia: https://github.com/energia/Energia
 
