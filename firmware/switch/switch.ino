@@ -28,6 +28,12 @@
 #define PLUS_BUTTON 4
 #define MINUS_BUTTON 5
 #define SELECT_BUTTON 6
+#define LOAD1 7
+#define LOAD2 8
+#define LOAD3 9
+#define LOAD4 10
+
+#define NUMTEMPS 103 // NTC table
 
 OLED oled(13, 0x3C);
 
@@ -35,6 +41,8 @@ int8_t current_temp_1;
 int8_t set_temp_1;
 int8_t current_temp_2;
 int8_t set_temp_2;
+
+bool load1 = HIGH;
 
 uint8_t relay_states = 0; //0b000x xxx0
 
@@ -53,13 +61,161 @@ enum {
 
 uint8_t state = STATE_DISPLAY;
 uint8_t mode = MODE_DISPLAY;
+bool show_dot = 1;
+
+// https://raw.github.com/reprap/firmware/master/createTemperatureLookup.py
+// python createTemperatureLookup.py --r0=4700 --t0=25 --r1=0 --r2=1000 --beta=3950 --max-adc=1023
+//      num steps were manualy set to 100
+// http://hydraraptor.blogspot.com/2007/10/measuring-temperature-easy-way.html
+// NTC 4.7k EPCOS B57045-K472-K
+
+const short temptable[NUMTEMPS][2] = {
+   {1, 554},
+   {11, 277},
+   {21, 231},
+   {31, 206},
+   {41, 190},
+   {51, 178},
+   {61, 168},
+   {71, 160},
+   {81, 154},
+   {91, 148},
+   {101, 143},
+   {111, 138},
+   {121, 134},
+   {131, 130},
+   {141, 127},
+   {151, 123},
+   {161, 120},
+   {171, 118},
+   {181, 115},
+   {191, 113},
+   {201, 110},
+   {211, 108},
+   {221, 106},
+   {231, 104},
+   {241, 102},
+   {251, 100},
+   {261, 98},
+   {271, 96},
+   {281, 95},
+   {291, 93},
+   {301, 91},
+   {311, 90},
+   {321, 88},
+   {331, 87},
+   {341, 85},
+   {351, 84},
+   {361, 82},
+   {371, 81},
+   {381, 80},
+   {391, 78},
+   {401, 77},
+   {411, 76},
+   {421, 75},
+   {431, 73},
+   {441, 72},
+   {451, 71},
+   {461, 70},
+   {471, 69},
+   {481, 67},
+   {491, 66},
+   {501, 65},
+   {511, 64},
+   {521, 63},
+   {531, 62},
+   {541, 61},
+   {551, 60},
+   {561, 58},
+   {571, 57},
+   {581, 56},
+   {591, 55},
+   {601, 54},
+   {611, 53},
+   {621, 52},
+   {631, 51},
+   {641, 50},
+   {651, 49},
+   {661, 47},
+   {671, 46},
+   {681, 45},
+   {691, 44},
+   {701, 43},
+   {711, 42},
+   {721, 41},
+   {731, 39},
+   {741, 38},
+   {751, 37},
+   {761, 36},
+   {771, 35},
+   {781, 33},
+   {791, 32},
+   {801, 31},
+   {811, 29},
+   {821, 28},
+   {831, 26},
+   {841, 25},
+   {851, 23},
+   {861, 22},
+   {871, 20},
+   {881, 19},
+   {891, 17},
+   {901, 15},
+   {911, 13},
+   {921, 11},
+   {931, 8},
+   {941, 6},
+   {951, 3},
+   {961, 0},
+   {971, -2},
+   {981, -6},
+   {991, -11},
+   {1001, -17},
+   {1011, -27},
+   {1021, -47}
+};
+
+int convert_raw_to_celsius(int rawtemp) {
+    int current_celsius = 0;
+    int i = 0;
+
+    for (i=1; i < NUMTEMPS; i++) {
+        if (temptable[i][0] > rawtemp) {
+            int realtemp  = temptable[i-1][1] + (rawtemp - temptable[i-1][0]) * (temptable[i][1] - temptable[i-1][1]) / (temptable[i][0] - temptable[i-1][0]);
+            if (realtemp > 255) {
+                realtemp = 255;
+            }
+
+            current_celsius = realtemp;
+            break;
+        }
+    }
+
+    // Overflow: We just clamp to 0 degrees celsius
+    if (i == NUMTEMPS)  {
+        current_celsius = 1000;
+    }
+
+    return current_celsius;
+}
+
+int read_temp_1() {
+    int rawtemp = analogRead(A1);
+    return convert_raw_to_celsius(rawtemp);
+}
+
+int read_temp_2() {
+    int rawtemp = analogRead(A0);
+    return convert_raw_to_celsius(rawtemp);
+}
+
 
 void read_temp_sensors() {
-    current_temp_1 = 25;
+    current_temp_1 = read_temp_1();
     oled.set_cursor(10, 5, LARGE_FONT);
     oled.write("%3i %3i", current_temp_1, set_temp_1);
     
-    current_temp_2 = 40;
+    current_temp_2 = read_temp_2();
     oled.set_cursor(10, 2, LARGE_FONT);
     oled.write("%3i %3i", current_temp_2, set_temp_2);
 }
@@ -117,6 +273,19 @@ void setup() {
     pinMode(PLUS_BUTTON, INPUT_PULLUP);
     pinMode(MINUS_BUTTON, INPUT_PULLUP);
     pinMode(SELECT_BUTTON, INPUT_PULLUP);
+
+    pinMode(A0, INPUT);
+    pinMode(A1, INPUT);
+
+    pinMode(LOAD1, OUTPUT);
+    pinMode(LOAD2, OUTPUT);
+    pinMode(LOAD3, OUTPUT);
+    pinMode(LOAD4, OUTPUT);
+    digitalWrite(LOAD1, HIGH);
+    digitalWrite(LOAD2, HIGH);
+    digitalWrite(LOAD3, HIGH);
+    digitalWrite(LOAD4, HIGH);
+
 }
 
 void loop() {
@@ -165,13 +334,24 @@ void loop() {
             }
             else {
                 mode = MODE_DISPLAY;
-                delay(500); // wait a little, otherwise we might get back to MODE_SET_1 too soon
             }
+
+            delay(500); // wait a little, otherwise we might get back to MODE_SET_1 too soon
 
             state = STATE_DISPLAY;
             break;
 
         case STATE_DISPLAY:
+            oled.set_cursor(0, 7, SMALL_FONT);
+            if (show_dot == 1) {
+                show_dot = 0;
+                oled.write(" ");
+            }
+            else {
+                show_dot = 1;
+                oled.write(".");
+            }
+
             if (mode == MODE_SET_1) {
                 oled.set_cursor(10, 5, LARGE_FONT);
                 oled.write("%3i    ", current_temp_1);
@@ -184,7 +364,6 @@ void loop() {
                 oled.set_cursor(10, 2, LARGE_FONT);
                 oled.write("%3i %3i", current_temp_2, set_temp_2);
             }
-
             break;
     }
 }
