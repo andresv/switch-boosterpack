@@ -22,8 +22,12 @@
  */
 
 #include <Energia.h>
+#include "MspFlash.h"
 #include <stdlib.h>
 #include "OLED.h"
+
+//https://github.com/energia/Energia/blob/master/hardware/msp430/libraries/MspFlash/examples/flash_readwrite/flash_readwrite.ino
+#define flash SEGMENT_D
 
 #define PLUS_BUTTON 4
 #define MINUS_BUTTON 5
@@ -252,7 +256,20 @@ void switch_relay(uint8_t relay_nr, bool on) {
     }
 }
 
+void save_set_values() {
+    int8_t buf[2] = {set_temp_1, set_temp_2};
+    Flash.erase(flash);
+    Flash.write(flash, (unsigned char*)buf, 2);
+}
+
+void restore_set_values() {
+    Flash.read(flash, (unsigned char*)&set_temp_1, 1);
+    Flash.read(flash+1, (unsigned char*)&set_temp_2, 1);
+}
+
 void setup() {
+    restore_set_values();
+
     oled.init();
     oled.clear();
     
@@ -333,6 +350,7 @@ void loop() {
                 mode = MODE_SET_2;
             }
             else {
+                save_set_values();
                 mode = MODE_DISPLAY;
             }
 
