@@ -277,11 +277,11 @@ void read_temp_sensors() {
 void display_relay_state(uint8_t relay_nr, bool on) {
     if (on) {
         relay_states |= (1<<relay_nr);
-        oled.write("(O)");
+        oled.write("o");
     }
     else {
         relay_states &= ~(1<<relay_nr);
-        oled.write("( )");
+        oled.write(".");
     }
 }
 
@@ -292,22 +292,22 @@ void switch_relay(uint8_t relay_nr, bool on) {
     // Thats why there is such a 'nice' bit twiddling
     switch (relay_nr) {
         case 1:
-            oled.set_cursor(114, 7, SMALL_FONT);
+            oled.set_cursor(120, 7, SMALL_FONT);
             display_relay_state(relay_nr, on);
             digitalWrite(LOAD1, ((relay_states ^ (1 << 1)) >> 1) & 0x01);
             break;
         case 2:
-            oled.set_cursor(114, 5, SMALL_FONT);
+            oled.set_cursor(120, 5, SMALL_FONT);
             display_relay_state(relay_nr, on);
             digitalWrite(LOAD2, ((relay_states ^ (1 << 2)) >> 2) & 0x01);
             break;
         case 3:
-            oled.set_cursor(114, 3, SMALL_FONT);
+            oled.set_cursor(120, 3, SMALL_FONT);
             display_relay_state(relay_nr, on);
             digitalWrite(LOAD3, ((relay_states ^ (1 << 3)) >> 3) & 0x01);
             break;
         case 4:
-            oled.set_cursor(114, 1, SMALL_FONT);
+            oled.set_cursor(120, 1, SMALL_FONT);
             display_relay_state(relay_nr, on);
             digitalWrite(LOAD4, ((relay_states ^ (1 << 4)) >> 4) & 0x01);
             break;
@@ -331,8 +331,8 @@ void setup() {
     oled.init();
     oled.clear();
     
-    oled.set_cursor(30, 7, SMALL_FONT);
-    oled.write("cur       set");
+    oled.set_cursor(15, 7, SMALL_FONT);
+    oled.write("current       set");
 
     oled.set_cursor(10, 5, LARGE_FONT);
     oled.write("%3i %3i", current_temp_1, set_temp_1);
