@@ -26,6 +26,9 @@
 #include <stdlib.h>
 #include "OLED.h"
 
+#define TRUE 1
+#define FALSE 0
+
 //https://github.com/energia/Energia/blob/master/hardware/msp430/libraries/MspFlash/examples/flash_readwrite/flash_readwrite.ino
 #define flash SEGMENT_D
 
@@ -38,6 +41,7 @@
 #define LOAD4 10
 
 #define NUMTEMPS 103 // NTC table
+#define ROLLING_AVERAGE_SIZE 10
 
 OLED oled(13, 0x3C);
 
@@ -45,6 +49,9 @@ int8_t current_temp_1;
 int8_t set_temp_1;
 int8_t current_temp_2;
 int8_t set_temp_2;
+
+uint16_t temp_1_rolling_buf[ROLLING_AVERAGE_SIZE];
+uint16_t temp_2_rolling_buf[ROLLING_AVERAGE_SIZE];
 
 bool load1 = HIGH;
 
@@ -69,7 +76,7 @@ bool show_dot = 1;
 
 // https://raw.github.com/reprap/firmware/master/createTemperatureLookup.py
 // python createTemperatureLookup.py --r0=4700 --t0=25 --r1=0 --r2=1000 --beta=3950 --max-adc=1023
-//      num steps were manualy set to 100
+//      num steps were manualy set to 100 and adcref to 3.6 V
 // http://hydraraptor.blogspot.com/2007/10/measuring-temperature-easy-way.html
 // NTC 4.7k EPCOS B57045-K472-K
 
@@ -203,14 +210,56 @@ int convert_raw_to_celsius(int rawtemp) {
     return current_celsius;
 }
 
+inline uint16_t calc_average(uint16_t* buf, bool filled) {
+    if (filled) {
+        uint8_t i;
+        uint16_t sum = 0;
+        for (i=0; i<ROLLING_AVERAGE_SIZE; i++) {
+            sum += buf[i];
+        }
+        return sum/ROLLING_AVERAGE_SIZE;
+    }
+    else {
+        return buf[1];
+    }
+}
+
+uint16_t temp_1_rolling_average(uint16_t rawtemp) {
+    static uint8_t index = 0;
+    static bool filled = FALSE;
+
+    temp_1_rolling_buf[index] = rawtemp;
+    index++;
+    if (index == ROLLING_AVERAGE_SIZE) {
+        index = 0;
+        filled = TRUE;
+    }
+
+    return calc_average(temp_1_rolling_buf, filled);
+}
+
+uint16_t temp_2_rolling_average(uint16_t rawtemp) {
+    static uint8_t index = 0;
+    static bool filled = FALSE;
+
+    temp_2_rolling_buf[index] = rawtemp;
+    index++;
+    if (index == ROLLING_AVERAGE_SIZE) {
+        index = 0;
+        filled = TRUE;
+    }
+
+    return calc_average(temp_2_rolling_buf, filled);
+}
+
 int read_temp_1() {
-    int rawtemp = analogRead(A1);
-    return convert_raw_to_celsius(rawtemp);
+    uint16_t rawtemp = analogRead(A1);
+    return convert_raw_to_celsius(temp_1_rolling_average(rawtemp));
 }
 
 int read_temp_2() {
-    int rawtemp = analogRead(A0);
-    return convert_raw_to_celsius(rawtemp);
+    uint16_t rawtemp = analogRead(A0);
+    return convert_raw_to_celsius(temp_2_rolling_average(rawtemp));
 }
 
 
