@@ -220,7 +220,7 @@ inline uint16_t calc_average(uint16_t* buf, bool filled) {
         return sum/ROLLING_AVERAGE_SIZE;
     }
     else {
-        return buf[1];
+        return buf[0];
     }
 }
 
