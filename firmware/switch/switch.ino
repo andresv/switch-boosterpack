@@ -45,6 +45,9 @@
 #define NUMTEMPS 103 // NTC table
 #define ROLLING_AVERAGE_SIZE 10
 
+#define UPPER_HYSTERESIS 5
+#define LOWER_HYSTERESIS 5
+
 OLED oled(13, 0x3C);
 
 int8_t current_temp_1;
@@ -55,7 +58,8 @@ int8_t set_temp_2;
 uint16_t temp_1_rolling_buf[ROLLING_AVERAGE_SIZE];
 uint16_t temp_2_rolling_buf[ROLLING_AVERAGE_SIZE];
 
-bool load1 = HIGH;
+bool hysteresis_1_raising = TRUE;
+bool hysteresis_2_raising = TRUE;
 
 uint8_t relay_states = 0; //0b000x xxx0
 
@@ -412,6 +416,7 @@ void loop() {
             break;
 
         case STATE_DISPLAY:
+            // show blinking dot
             oled.set_cursor(0, 7, SMALL_FONT);
             if (show_dot == 1) {
                 show_dot = 0;
@@ -422,6 +427,7 @@ void loop() {
                 oled.write(".");
             }
 
+            // show temperatures
             if (mode == MODE_SET_1) {
                 oled.set_cursor(10, 5, LARGE_FONT);
                 oled.write("%3i    ", current_temp_1);
@@ -434,6 +440,51 @@ void loop() {
                 oled.set_cursor(10, 2, LARGE_FONT);
                 oled.write("%3i %3i", current_temp_2, set_temp_2);
             }
+
+            //---------------------------------------------------------------
+            // 1 ON-OFF regulator
+            //---------------------------------------------------------------
+            // upper point
+            if (hysteresis_1_raising && (current_temp_1 >= (set_temp_1 + UPPER_HYSTERESIS))) {
+                hysteresis_1_raising = FALSE;
+            }
+            // lower point
+            else if (!hysteresis_1_raising && (current_temp_1 <= (set_temp_1 - LOWER_HYSTERESIS))) {
+                hysteresis_1_raising = TRUE;
+            }
+            // raising
+            if (hysteresis_1_raising) {
+                switch_relay(1, ON);
+                switch_relay(2, ON);
+            }
+            // falling
+            else {
+                switch_relay(1, OFF);
+                switch_relay(2, OFF);
+            }
+
+            //---------------------------------------------------------------
+            // 2 ON-OFF regulator
+            //---------------------------------------------------------------
+            // upper point
+            if (hysteresis_2_raising && (current_temp_2 >= (set_temp_2 + UPPER_HYSTERESIS))) {
+                hysteresis_2_raising = FALSE;
+            }
+            // lower point
+            else if (!hysteresis_2_raising && (current_temp_2 <= (set_temp_2 - LOWER_HYSTERESIS))) {
+                hysteresis_2_raising = TRUE;
+            }
+            // raising
+            if (hysteresis_2_raising) {
+                switch_relay(3, ON);
+                switch_relay(4, ON);
+            }
+            // falling
+            else {
+                switch_relay(3, OFF);
+                switch_relay(4, OFF);
+            }
+
             break;
     }
 }
