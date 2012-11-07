@@ -28,6 +28,8 @@
 
 #define TRUE 1
 #define FALSE 0
+#define ON 1
+#define OFF 0
 
 //https://github.com/energia/Energia/blob/master/hardware/msp430/libraries/MspFlash/examples/flash_readwrite/flash_readwrite.ino
 #define flash SEGMENT_D
@@ -262,7 +264,6 @@ int read_temp_2() {
     return convert_raw_to_celsius(temp_2_rolling_average(rawtemp));
 }
 
-
 void read_temp_sensors() {
     current_temp_1 = read_temp_1();
     oled.set_cursor(10, 5, LARGE_FONT);
@@ -285,22 +286,30 @@ void display_relay_state(uint8_t relay_nr, bool on) {
 }
 
 void switch_relay(uint8_t relay_nr, bool on) {
+    // Notice that LOAD outputs are inverted
+    // LOW is ON
+    // HIGH is OFF
+    // Thats why there is such a 'nice' bit twiddling
     switch (relay_nr) {
         case 1:
             oled.set_cursor(114, 7, SMALL_FONT);
             display_relay_state(relay_nr, on);
+            digitalWrite(LOAD1, ((relay_states ^ (1 << 1)) >> 1) & 0x01);
             break;
         case 2:
             oled.set_cursor(114, 5, SMALL_FONT);
             display_relay_state(relay_nr, on);
+            digitalWrite(LOAD2, ((relay_states ^ (1 << 2)) >> 2) & 0x01);
             break;
         case 3:
             oled.set_cursor(114, 3, SMALL_FONT);
             display_relay_state(relay_nr, on);
+            digitalWrite(LOAD3, ((relay_states ^ (1 << 3)) >> 3) & 0x01);
             break;
         case 4:
             oled.set_cursor(114, 1, SMALL_FONT);
             display_relay_state(relay_nr, on);
+            digitalWrite(LOAD4, ((relay_states ^ (1 << 4)) >> 4) & 0x01);
             break;
     }
 }
@@ -331,10 +340,14 @@ void setup() {
     oled.set_cursor(10, 2, LARGE_FONT);
     oled.write("%3i %3i", current_temp_2, set_temp_2);
 
-    switch_relay(1, HIGH);
-    switch_relay(2, LOW);
-    switch_relay(3, HIGH);
-    switch_relay(4, HIGH);
+    pinMode(LOAD1, OUTPUT);
+    pinMode(LOAD2, OUTPUT);
+    pinMode(LOAD3, OUTPUT);
+    pinMode(LOAD4, OUTPUT);
+    switch_relay(1, OFF);
+    switch_relay(2, OFF);
+    switch_relay(3, OFF);
+    switch_relay(4, OFF);
     
     pinMode(PLUS_BUTTON, INPUT_PULLUP);
     pinMode(MINUS_BUTTON, INPUT_PULLUP);
@@ -342,16 +355,6 @@ void setup() {
 
     pinMode(A0, INPUT);
     pinMode(A1, INPUT);
-
-    pinMode(LOAD1, OUTPUT);
-    pinMode(LOAD2, OUTPUT);
-    pinMode(LOAD3, OUTPUT);
-    pinMode(LOAD4, OUTPUT);
-    digitalWrite(LOAD1, HIGH);
-    digitalWrite(LOAD2, HIGH);
-    digitalWrite(LOAD3, HIGH);
-    digitalWrite(LOAD4, HIGH);
-
 }
 
 void loop() {
