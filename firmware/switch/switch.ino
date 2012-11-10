@@ -51,14 +51,14 @@
 #define HIGH_TEMP 60
 #define NORMAL_TEMP 20
 
-#define DEFAULT_2_OFF_TEMP -50
-#define DEFAULT_2_ON_TEMP 20
+#define DEFAULT_OFF_TEMP -50
+#define DEFAULT_ON_TEMP 20
 
 OLED oled(13, 0x3C);
 
 int8_t current_temp_1;
 int8_t set_temp_1;
-int8_t preset_temperatures_1[3] = {NORMAL_TEMP, HIGH_TEMP, 80};
+int8_t preset_temperatures_1[] = {DEFAULT_OFF_TEMP, NORMAL_TEMP, HIGH_TEMP};
 int8_t current_temp_2;
 int8_t set_temp_2;
 
@@ -72,19 +72,14 @@ uint32_t high_temp_mode_start_time = 0;
 uint8_t relay_states = 0; //0b000x xxx0
 
 enum {
-    STATE_DISPLAY,
+    STATE_REGULATE,
     STATE_PLUS_MINUS_PRESSED,
     STATE_PLUS_BUTTON_PRESSED,
     STATE_MINUS_BUTTON_PRESSED,
     STATE_SELECT_BUTTON_PRESSED,
 };
 
-enum {
-    MODE_DISPLAY,
-};
-
-uint8_t state = STATE_DISPLAY;
-uint8_t mode = MODE_DISPLAY;
+uint8_t state = STATE_REGULATE;
 bool show_dot = 1;
 
 void select_pressed();
@@ -279,17 +274,7 @@ int read_temp_2() {
 
 void read_temp_sensors() {
     current_temp_1 = read_temp_1();
-    oled.set_cursor(10, 5, LARGE_FONT);
-    oled.write("%3i %3i", current_temp_1, set_temp_1);
-    
     current_temp_2 = read_temp_2();
-    oled.set_cursor(10, 2, LARGE_FONT);
-    if (set_temp_2 == DEFAULT_2_OFF_TEMP) {
-        oled.write("%3i OFF", current_temp_2);
-    }
-    else {
-        oled.write("%3i %3i", current_temp_2, set_temp_2);
-    }
 }
 
 void display_relay_state(uint8_t relay_nr, bool on) {
@@ -300,6 +285,24 @@ void display_relay_state(uint8_t relay_nr, bool on) {
     else {
         relay_states &= ~(1<<relay_nr);
         oled.write(".");
+    }
+}
+
+void display_temperature() {
+    oled.set_cursor(10, 5, LARGE_FONT);
+    if (set_temp_1 == DEFAULT_OFF_TEMP) {
+        oled.write("%3i OFF", current_temp_1);
+    }
+    else {
+        oled.write("%3i %3i", current_temp_1, set_temp_1);
+    }
+    
+    oled.set_cursor(10, 2, LARGE_FONT);
+    if (set_temp_2 == DEFAULT_OFF_TEMP) {
+        oled.write("%3i OFF", current_temp_2);
+    }
+    else {
+        oled.write("%3i %3i", current_temp_2, set_temp_2);
     }
 }
 
@@ -348,16 +351,7 @@ void setup() {
     oled.set_cursor(15, 7, SMALL_FONT);
     oled.write("current       set");
 
-    oled.set_cursor(10, 5, LARGE_FONT);
-    oled.write("%3i %3i", current_temp_1, set_temp_1);
-
-    oled.set_cursor(10, 2, LARGE_FONT);
-    if (set_temp_2 == DEFAULT_2_OFF_TEMP) {
-        oled.write("%3i OFF", current_temp_2);
-    }
-    else {
-        oled.write("%3i %3i", current_temp_2, set_temp_2);
-    }
+    display_temperature();
 
     pinMode(LOAD1, OUTPUT);
     pinMode(LOAD2, OUTPUT);
@@ -395,6 +389,7 @@ void loop() {
     static uint8_t temp_1_preset_index = 0;
     static bool default_off = TRUE;
     read_temp_sensors();
+    display_temperature();
 
     // we have interrupts, but we also want to increment value
     // by just holding down a button
@@ -415,30 +410,30 @@ void loop() {
         case STATE_PLUS_MINUS_PRESSED:
             if (default_off) {
                 default_off = FALSE;
-                set_temp_2 = DEFAULT_2_ON_TEMP;
+                set_temp_2 = DEFAULT_ON_TEMP;
             }
             else {
                 default_off = TRUE;
-                set_temp_2 = DEFAULT_2_OFF_TEMP;
+                set_temp_2 = DEFAULT_OFF_TEMP;
             }
 
             save_set_values();
-            state = STATE_DISPLAY;
+            state = STATE_REGULATE;
             delay(100);
             break;
 
         case STATE_PLUS_BUTTON_PRESSED:
             set_temp_2++;
             save_set_values();
-            state = STATE_DISPLAY;
-            delay(10); // debounce
+            state = STATE_REGULATE;
+            delay(25); // debounce
             break;
 
         case STATE_MINUS_BUTTON_PRESSED:
             set_temp_2--;
             save_set_values();
-            state = STATE_DISPLAY;
-            delay(10); // debounce
+            state = STATE_REGULATE;
+            delay(25); // debounce
             break;
 
         case STATE_SELECT_BUTTON_PRESSED:
@@ -454,11 +449,11 @@ void loop() {
 
             save_set_values();
             
-            state = STATE_DISPLAY;
-            delay(10); // debounce
+            state = STATE_REGULATE;
+            delay(25); // debounce
             break;
 
-        case STATE_DISPLAY:
+        case STATE_REGULATE:
             // show blinking dot
             oled.set_cursor(0, 7, SMALL_FONT);
             if (show_dot == 1) {
@@ -518,7 +513,7 @@ void loop() {
             // Control high temp mode
             //---------------------------------------------------------------
             if (((millis() - high_temp_mode_start_time) >= HIGH_TEMP_ON_TIME) && (set_temp_1 == HIGH_TEMP)) {
-                set_temp_1 = NORMAL_TEMP;
+                set_temp_1 = DEFAULT_OFF_TEMP;
             }
 
             break;
