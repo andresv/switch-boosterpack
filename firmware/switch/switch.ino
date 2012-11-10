@@ -47,7 +47,7 @@
 
 #define UPPER_HYSTERESIS 5
 #define LOWER_HYSTERESIS 5
-#define HIGH_TEMP_ON_TIME 2 * 60000 // 1 minute
+#define HIGH_TEMP_ON_TIME 60 * 60000 // 1 minute
 #define HIGH_TEMP 60
 #define NORMAL_TEMP 20
 
@@ -304,30 +304,26 @@ void display_relay_state(uint8_t relay_nr, bool on) {
 }
 
 void switch_relay(uint8_t relay_nr, bool on) {
-    // Notice that LOAD outputs are inverted
-    // LOW is ON
-    // HIGH is OFF
-    // Thats why there is such a 'nice' bit twiddling
     switch (relay_nr) {
         case 1:
             oled.set_cursor(120, 7, SMALL_FONT);
             display_relay_state(relay_nr, on);
-            digitalWrite(LOAD1, ((relay_states ^ (1 << 1)) >> 1) & 0x01);
+            digitalWrite(LOAD1, (relay_states >> 1) & 0x01);
             break;
         case 2:
             oled.set_cursor(120, 5, SMALL_FONT);
             display_relay_state(relay_nr, on);
-            digitalWrite(LOAD2, ((relay_states ^ (1 << 2)) >> 2) & 0x01);
+            digitalWrite(LOAD2, (relay_states >> 2) & 0x01);
             break;
         case 3:
             oled.set_cursor(120, 3, SMALL_FONT);
             display_relay_state(relay_nr, on);
-            digitalWrite(LOAD3, ((relay_states ^ (1 << 3)) >> 3) & 0x01);
+            digitalWrite(LOAD3, (relay_states >> 3) & 0x01);
             break;
         case 4:
             oled.set_cursor(120, 1, SMALL_FONT);
             display_relay_state(relay_nr, on);
-            digitalWrite(LOAD4, ((relay_states ^ (1 << 4)) >> 4) & 0x01);
+            digitalWrite(LOAD4, (relay_states >> 4) & 0x01);
             break;
     }
 }
