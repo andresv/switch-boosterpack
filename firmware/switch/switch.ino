@@ -47,11 +47,18 @@
 
 #define UPPER_HYSTERESIS 5
 #define LOWER_HYSTERESIS 5
+#define HIGH_TEMP_ON_TIME 2 * 60000 // 1 minute
+#define HIGH_TEMP 60
+#define NORMAL_TEMP 20
+
+#define DEFAULT_2_OFF_TEMP -50
+#define DEFAULT_2_ON_TEMP 20
 
 OLED oled(13, 0x3C);
 
 int8_t current_temp_1;
 int8_t set_temp_1;
+int8_t preset_temperatures_1[3] = {NORMAL_TEMP, HIGH_TEMP, 80};
 int8_t current_temp_2;
 int8_t set_temp_2;
 
@@ -60,11 +67,13 @@ uint16_t temp_2_rolling_buf[ROLLING_AVERAGE_SIZE];
 
 bool hysteresis_1_raising = TRUE;
 bool hysteresis_2_raising = TRUE;
+uint32_t high_temp_mode_start_time = 0;
 
 uint8_t relay_states = 0; //0b000x xxx0
 
 enum {
     STATE_DISPLAY,
+    STATE_PLUS_MINUS_PRESSED,
     STATE_PLUS_BUTTON_PRESSED,
     STATE_MINUS_BUTTON_PRESSED,
     STATE_SELECT_BUTTON_PRESSED,
@@ -72,13 +81,13 @@ enum {
 
 enum {
     MODE_DISPLAY,
-    MODE_SET_1,
-    MODE_SET_2,
 };
 
 uint8_t state = STATE_DISPLAY;
 uint8_t mode = MODE_DISPLAY;
 bool show_dot = 1;
+
+void select_pressed();
 
 // https://raw.github.com/reprap/firmware/master/createTemperatureLookup.py
 // python createTemperatureLookup.py --r0=4700 --t0=25 --r1=0 --r2=1000 --beta=3950 --max-adc=1023
@@ -275,7 +284,12 @@ void read_temp_sensors() {
     
     current_temp_2 = read_temp_2();
     oled.set_cursor(10, 2, LARGE_FONT);
-    oled.write("%3i %3i", current_temp_2, set_temp_2);
+    if (set_temp_2 == DEFAULT_2_OFF_TEMP) {
+        oled.write("%3i OFF", current_temp_2);
+    }
+    else {
+        oled.write("%3i %3i", current_temp_2, set_temp_2);
+    }
 }
 
 void display_relay_state(uint8_t relay_nr, bool on) {
@@ -342,7 +356,12 @@ void setup() {
     oled.write("%3i %3i", current_temp_1, set_temp_1);
 
     oled.set_cursor(10, 2, LARGE_FONT);
-    oled.write("%3i %3i", current_temp_2, set_temp_2);
+    if (set_temp_2 == DEFAULT_2_OFF_TEMP) {
+        oled.write("%3i OFF", current_temp_2);
+    }
+    else {
+        oled.write("%3i %3i", current_temp_2, set_temp_2);
+    }
 
     pinMode(LOAD1, OUTPUT);
     pinMode(LOAD2, OUTPUT);
@@ -356,63 +375,91 @@ void setup() {
     pinMode(PLUS_BUTTON, INPUT_PULLUP);
     pinMode(MINUS_BUTTON, INPUT_PULLUP);
     pinMode(SELECT_BUTTON, INPUT_PULLUP);
-
+    attachInterrupt(PLUS_BUTTON, &plus_pressed, FALLING);
+    attachInterrupt(MINUS_BUTTON, &minus_pressed, FALLING);
+    attachInterrupt(SELECT_BUTTON, &select_pressed, FALLING);
+    
     pinMode(A0, INPUT);
     pinMode(A1, INPUT);
 }
 
+void plus_pressed() {
+    state = STATE_PLUS_BUTTON_PRESSED;
+}
+
+void minus_pressed() {
+    state = STATE_MINUS_BUTTON_PRESSED;
+}
+
+void select_pressed() {
+    state = STATE_SELECT_BUTTON_PRESSED;
+}
+
 void loop() {
+    static uint8_t temp_1_preset_index = 0;
+    static bool default_off = TRUE;
     read_temp_sensors();
 
-    if (digitalRead(PLUS_BUTTON) == LOW) {
+    // we have interrupts, but we also want to increment value
+    // by just holding down a button
+    if (digitalRead(PLUS_BUTTON) == LOW && digitalRead(MINUS_BUTTON) == LOW) {
+        state = STATE_PLUS_MINUS_PRESSED;
+    }
+    else if (digitalRead(PLUS_BUTTON) == LOW) {
         state = STATE_PLUS_BUTTON_PRESSED;
-        delay(10);
     }
     else if (digitalRead(MINUS_BUTTON) == LOW) {
         state = STATE_MINUS_BUTTON_PRESSED;
-        delay(10);
     }
     else if (digitalRead(SELECT_BUTTON) == LOW) {
         state = STATE_SELECT_BUTTON_PRESSED;
-        delay(10);
     }
 
     switch(state) {
-        case STATE_PLUS_BUTTON_PRESSED:
-            if (mode == MODE_SET_1) {
-                set_temp_1++;
+        case STATE_PLUS_MINUS_PRESSED:
+            if (default_off) {
+                default_off = FALSE;
+                set_temp_2 = DEFAULT_2_ON_TEMP;
             }
-            else if (mode == MODE_SET_2) {
-                set_temp_2++;
+            else {
+                default_off = TRUE;
+                set_temp_2 = DEFAULT_2_OFF_TEMP;
             }
+
+            save_set_values();
             state = STATE_DISPLAY;
+            delay(100);
+            break;
+
+        case STATE_PLUS_BUTTON_PRESSED:
+            set_temp_2++;
+            save_set_values();
+            state = STATE_DISPLAY;
+            delay(10); // debounce
             break;
 
         case STATE_MINUS_BUTTON_PRESSED:
-            if (mode == MODE_SET_1) {
-                set_temp_1--;
-            }
-            else if (mode == MODE_SET_2) {
-                set_temp_2--;
-            }
+            set_temp_2--;
+            save_set_values();
             state = STATE_DISPLAY;
+            delay(10); // debounce
             break;
 
         case STATE_SELECT_BUTTON_PRESSED:
-            if (mode == MODE_DISPLAY) {
-                mode = MODE_SET_1;
-            }
-            else if (mode == MODE_SET_1) {
-                mode = MODE_SET_2;
-            }
-            else {
-                save_set_values();
-                mode = MODE_DISPLAY;
+            set_temp_1 = preset_temperatures_1[temp_1_preset_index];
+            if (set_temp_1 == HIGH_TEMP) {
+                high_temp_mode_start_time = millis();
             }
 
-            delay(500); // wait a little, otherwise we might get back to MODE_SET_1 too soon
+            temp_1_preset_index++;
+            if (temp_1_preset_index >= sizeof(preset_temperatures_1)/sizeof(int8_t)) {
+                temp_1_preset_index = 0;
+            }
 
+            save_set_values();
+            
             state = STATE_DISPLAY;
+            delay(10); // debounce
             break;
 
         case STATE_DISPLAY:
@@ -425,20 +472,6 @@ void loop() {
             else {
                 show_dot = 1;
                 oled.write(".");
-            }
-
-            // show temperatures
-            if (mode == MODE_SET_1) {
-                oled.set_cursor(10, 5, LARGE_FONT);
-                oled.write("%3i    ", current_temp_1);
-                oled.set_cursor(10, 5, LARGE_FONT);
-                oled.write("%3i %3i", current_temp_1, set_temp_1);
-            }
-            else if (mode == MODE_SET_2) {
-                oled.set_cursor(10, 2, LARGE_FONT);
-                oled.write("%3i    ", current_temp_2);
-                oled.set_cursor(10, 2, LARGE_FONT);
-                oled.write("%3i %3i", current_temp_2, set_temp_2);
             }
 
             //---------------------------------------------------------------
@@ -483,6 +516,13 @@ void loop() {
             else {
                 switch_relay(3, OFF);
                 switch_relay(4, OFF);
+            }
+
+            //---------------------------------------------------------------
+            // Control high temp mode
+            //---------------------------------------------------------------
+            if (((millis() - high_temp_mode_start_time) >= HIGH_TEMP_ON_TIME) && (set_temp_1 == HIGH_TEMP)) {
+                set_temp_1 = NORMAL_TEMP;
             }
 
             break;
